@@ -18,3 +18,8 @@ g <- ggplot(data = data.frame(x = 0), aes = (x = x)) +
   xlab("Odleglosc od srodka Ziemi r [m]") + 
   scale_x_continuous(breaks = R0 * 0:N_R0, labels = c(0, "R0", paste(2:N_R0, "R0", sep = "*")), limits = c(0, N_R0 * R0))
 g
+
+t_k=pi/2*sqrt(R0^3/(G*M0))
+print(paste("Czas spadania ksiazki na Ziemie to",
+            round(t_k), "s =",
+            round(t_k/60), "min", round(t_k) - 60*round(t_k/60), "s."))
