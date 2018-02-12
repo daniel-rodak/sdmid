@@ -1,5 +1,5 @@
 label {
-	margin: 10px;
+	margin: none;
 }
 
 
@@ -19,21 +19,21 @@ input[type="checkbox"]:checked + img.plastelinka {
 
 .container {
   position: relative;
-  width: 300px;
-  height: 150px;
+  width: 500px;
+  height: 850px;
   margin: 2%;
 }
 
 #target {
   position: absolute;
-  background:#0099cc;
+  background:none;
   width:100%;
   height:100%;
   display:none;
 }
 
 #bottom {
-  background: pink;
+  background: none;
   width: 100%;
   height: 100%;
 }
