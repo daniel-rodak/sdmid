@@ -1,5 +1,6 @@
 library(shiny)
 library(colourpicker)
+library(shinyjs)
 
 RGB2HEX <- function(RGB) {
   toupper(paste0("#", paste(as.character(as.hexmode(RGB)), collapse = "")))
@@ -34,48 +35,82 @@ colorMixer <- function(curves, Tmat) {
 }
 
 ui <- fluidPage(
+  useShinyjs(),
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "mojaPlastelinka.css")
+  ),
   
   titlePanel("Mieszacz kolorów"),
-  
-  sidebarLayout(
-    sidebarPanel(
-      lapply(1:12, function(x) 
-        fluidRow(
-          column(10, colourInput(paste0('cl', x),
-                                 paste0(x, '. kolor'),
-                                 showColour = 'back',
-                                 palette = "limited",
-                                 allowedCols = mnslRef$hex,
-                                 value = mnslRef$hex[x])),
-          column(2, checkboxInput(paste0('ch', x), '', value = ifelse(x < 3, T, F)))
-        )
+  fluidRow(
+    column(6,
+      tags$button("Plasteliny", class = "toggle"),
+      tags$div(
+        class="container",
+        tags$div(
+          id = "target",
+          
+          lapply(1:12, function(x) {
+            tags$label(
+              tags$input(type = "checkbox"),
+              tags$img(id = sprintf("pl%0.2d", x),
+                       class="plastelinka",
+                       src=sprintf("plastelinka/pl%0.2d.png", x))
+            )
+          })
+        ),
+        tags$div(id = "bottom")
       )
     ),
-    
-    mainPanel(
-      uiOutput('outColorUI')
+    column(
+      6,
+      tags$div(
+        id = "mixResult",
+        class = "containerMix",
+        tags$img(class = "mix", src = "plastelinka/plMix.png")
+      )
     )
-  )
+  ),
+  tags$script(src="myJava.js")
 )
 
 server <- function(input, output, session) {
   
   mixedColor <- reactive({
-    selectedColors <- sapply(1:12, function(x) input[[paste0('cl', x)]])
-    activeCheckbox <- sapply(1:12, function(x) input[[paste0('ch', x)]])
-    activeColors <- selectedColors[activeCheckbox]
-    if (length(activeColors) == 0) {
+    activeColors <- sapply(1:12, function(x) {
+      curr <- pl[[sprintf('pl%0.2d', x)]]
+      if (curr > 0)
+        TRUE
+      else
+        FALSE
+    })
+    if (all(!activeColors)) {
       ret <- '#FFFFFF'
     } else {
-      selectedMnsl <- mnslRef[mnslRef$hex %in% activeColors, 6:41]
+      selectedMnsl <- mnslRef[activeColors, 6:41]
       ret <- colorMixer(selectedMnsl, Tmat)
     }
     ret
   })
   
-  output$outColorUI <- renderUI({
-    colourInput('outColor', 'Wynik mieszania', value = mixedColor(), showColour = 'back')
+  applyMix <- reactive({
+    sprintf('document.getElementById("mixResult").style.backgroundColor="%s";',
+            mixedColor())
   })
+  
+  pl <- do.call(reactiveValues, args = setNames(lapply(1:12, function(x) -1), sprintf('pl%0.2d', 1:12)))
+  
+  onclick("pl01", {pl$pl01 <- -pl$pl01; runjs(applyMix())})
+  onclick("pl02", {pl$pl02 <- -pl$pl02; runjs(applyMix())})
+  onclick("pl03", {pl$pl03 <- -pl$pl03; runjs(applyMix())})
+  onclick("pl04", {pl$pl04 <- -pl$pl04; runjs(applyMix())})
+  onclick("pl05", {pl$pl05 <- -pl$pl05; runjs(applyMix())})
+  onclick("pl06", {pl$pl06 <- -pl$pl06; runjs(applyMix())})
+  onclick("pl07", {pl$pl07 <- -pl$pl07; runjs(applyMix())})
+  onclick("pl08", {pl$pl08 <- -pl$pl08; runjs(applyMix())})
+  onclick("pl09", {pl$pl09 <- -pl$pl09; runjs(applyMix())})
+  onclick("pl10", {pl$pl10 <- -pl$pl10; runjs(applyMix())})
+  onclick("pl11", {pl$pl11 <- -pl$pl11; runjs(applyMix())})
+  onclick("pl12", {pl$pl12 <- -pl$pl12; runjs(applyMix())})
 }
 
 shinyApp(ui = ui, server = server)

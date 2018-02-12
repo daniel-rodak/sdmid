@@ -2,9 +2,8 @@ label {
 	margin: none;
 }
 
-
 img.plastelinka {
-	transition: all 2s ease-in-out;
+	transition: all 300ms ease-in-out;
 }
 
 input[type="checkbox"] {
@@ -14,7 +13,7 @@ input[type="checkbox"] {
 
 input[type="checkbox"]:checked + img.plastelinka {
 	
-  transform: translateX(100px);
+  transform: translateX(70px);
 }
 
 .container {
@@ -22,6 +21,13 @@ input[type="checkbox"]:checked + img.plastelinka {
   width: 500px;
   height: 850px;
   margin: 2%;
+}
+
+.containerMix {
+  position: relative;
+  width: 370px;
+  height: 312px;
+  background-color: #ffffff;
 }
 
 #target {
