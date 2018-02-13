@@ -38,13 +38,8 @@ ui <- fluidPage(
   useShinyjs(),
   tags$head(
     tags$link(rel = "stylesheet",
-              media="screen and (min-width: 750px)",
               type = "text/css",
-              href = "mojaPlastelinka.css"),
-    tags$link(rel = "stylesheet",
-              media="screen and (max-width: 749px)",
-              type = "text/css",
-              href = "mojaPlastelinkaSmall.css")
+              href = "mojaPlastelinka.css")
   ),
   
   titlePanel("Mieszacz kolorów"),

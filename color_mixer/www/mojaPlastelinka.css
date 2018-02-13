@@ -55,7 +55,7 @@ img.plBoxBottom {
   height: 312px;
   background-color: #ffffff;
   top: 0;
-  left: 360px;
+  left: 0px;
   z-index: 9;
 }
 
@@ -71,4 +71,10 @@ img.plBoxBottom {
   background: none;
   width: 100%;
   height: 100%;
+}
+
+@media screen and (min-width: 750px) {
+	.containerMix {
+		left: 360px;
+	}
 }
