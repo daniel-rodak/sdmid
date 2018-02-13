@@ -37,37 +37,49 @@ colorMixer <- function(curves, Tmat) {
 ui <- fluidPage(
   useShinyjs(),
   tags$head(
-    tags$link(rel = "stylesheet", type = "text/css", href = "mojaPlastelinka.css")
+    tags$link(rel = "stylesheet",
+              media="screen and (min-width: 750px)",
+              type = "text/css",
+              href = "mojaPlastelinka.css"),
+    tags$link(rel = "stylesheet",
+              media="screen and (max-width: 749px)",
+              type = "text/css",
+              href = "mojaPlastelinkaSmall.css")
   ),
   
   titlePanel("Mieszacz kolorów"),
-  fluidRow(
-    column(6,
-      tags$button("Plasteliny", class = "toggle"),
+  tags$button("Plasteliny", class = "toggle"),
+  tags$div(class = "mainContainer",
+    tags$div(
+      class="container",
       tags$div(
-        class="container",
-        tags$div(
-          id = "target",
-          
-          lapply(1:12, function(x) {
-            tags$label(
-              tags$input(type = "checkbox"),
-              tags$img(id = sprintf("pl%0.2d", x),
-                       class="plastelinka",
-                       src=sprintf("plastelinka/pl%0.2d.png", x))
-            )
-          })
+        id = "target",
+        
+        tags$img(
+          class = "plBoxBottom",
+          src = "cardS.jpg"
         ),
-        tags$div(id = "bottom")
-      )
+        
+        lapply(1:12, function(x) {
+          tags$label(
+            tags$input(type = "checkbox"),
+            tags$img(id = sprintf("pl%0.2d", x),
+                     class="plastelinka",
+                     src=sprintf("plastelinka/pl%0.2d.png", x))
+          )
+        }),
+        
+        tags$img(
+          class = "plBox",
+          src = "cardSS.jpg"
+        )
+      ),
+      tags$div(id = "bottom")
     ),
-    column(
-      6,
-      tags$div(
-        id = "mixResult",
-        class = "containerMix",
-        tags$img(class = "mix", src = "plastelinka/plMix.png")
-      )
+    tags$div(
+      id = "mixResult",
+      class = "containerMix",
+      tags$img(class = "mix", src = "plastelinka/plMix.png")
     )
   ),
   tags$script(src="myJava.js")

@@ -5,8 +5,8 @@ account: swiatdlamalychiduzych
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 276638
-bundleId: 1219375
+bundleId: 1220915
 url: https://swiatdlamalychiduzych.shinyapps.io/color_mixer/
-when: 1518451369.70005
+when: 1518525533.71797
 asMultiple: FALSE
 asStatic: FALSE
