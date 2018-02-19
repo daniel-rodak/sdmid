@@ -4,6 +4,7 @@ library(DT)
 library(tuneR)
 library(SynchWave)
 library(plotly)
+library(dplyr)
 
 hamming <- function(N, a = 0.53836, b = 0.46164) {
   a - b * cos(2*pi*0:(N-1) / (N - 1))
@@ -85,7 +86,8 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Widmo", tabName = "spec", icon = icon("signal")),
-      menuItem("Porównaj", tabName = "comp", icon = icon("object-group"))
+      menuItem("Porównaj", tabName = "comp", icon = icon("object-group")),
+      menuItem("Charakterystyka", tabName = "char", icon = icon("braille"))
     )
   ),
   
@@ -102,7 +104,8 @@ ui <- dashboardPage(
           box(width = 9,
             plotlyOutput('plt'),
             DT::dataTableOutput('tbl'),
-            actionButton('rst', 'Resetuj tabelkę')
+            actionButton('rst', 'Resetuj tabelkę'),
+            actionButton('add', 'Dodaj do charakterystyki')
           )
         )
       ),
@@ -126,6 +129,27 @@ ui <- dashboardPage(
             box(width = NULL, plotlyOutput('plt2'))
           )
         )
+      ),
+      
+      tabItem(tabName = 'char',
+        fluidRow(
+          box(width = 12, title = 'Charakterystyka wszystkich dźwięków',
+            plotlyOutput('plt3')
+          )
+        ),
+        fluidRow(
+          box(width = 6, title = 'Charakterystka rodzajów dźwięków',
+            plotlyOutput('pltdsc')    
+          ),
+          box(width = 6, title = 'Charakterystka źródeł dźwięków',
+            plotlyOutput('pltsrc')    
+          )
+        ),
+        fluidRow(
+          box(width = 12, title = "Tabela z danymi:",
+            DT::dataTableOutput('tbl2')
+          )
+        )
       )
     )
   )
@@ -138,6 +162,11 @@ server <- function(input, output, session) {
                                    Frequency = numeric(0),
                                    Smoothed = numeric(0)))
   selectedDf <- reactiveVal()
+  soundCompFrame <- reactiveVal(data.frame(SoundID = character(),
+                                           Source = character(),
+                                           Desc = character(),
+                                           Frequency = numeric(),
+                                           RelAmp = numeric()))
   
   dfPlot <- eventReactive(input$btn, {
     makeDfPlot(wav(), snd)
@@ -178,6 +207,63 @@ server <- function(input, output, session) {
   output$tbl <- DT::renderDataTable({
     req(selectedDf())
     selectedDf()
+  })
+  observeEvent(input$add, {
+    ret <- selPnt()
+    ret <- ret[order(ret$Frequency), ]
+    ret$RelAmp <- 10*log10(ret$Smoothed / ret$Smoothed[1])
+    ret$SoundID <- sprintf('%s_%s_%s', input$src, input$dsc, input$ptc)
+    ret$Source <- input$src
+    ret$Desc <- input$dsc
+    soundCompFrame(rbind(soundCompFrame(), ret[, c('SoundID', 'Source', 'Desc', 'Frequency', 'RelAmp')]))
+    # Reset
+    selPnt(data.frame(Note = character(0),
+                      Frequency = numeric(0),
+                      Smoothed = numeric(0)))
+    ret <- selPnt()
+    ret$RelAmp <- numeric(0)
+    colnames(ret) <- c('Nuta', 'Częstotliwość', 'Amplituda (log)', 'Amplituda względna (log/log)')
+    selectedDf(ret)
+  })
+  output$tbl2 <- DT::renderDataTable({
+    req(soundCompFrame())
+    soundCompFrame()
+  })
+  output$plt3 <- renderPlotly({
+    req(soundCompFrame())
+    p <- plot_ly(data = soundCompFrame(), x = ~Frequency, y = ~RelAmp, color = ~SoundID)
+    p <- add_lines(p)
+    p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+                yaxis = list(title = 'Amplituda względna'))
+    p
+  })
+  output$pltdsc <- renderPlotly({
+    req(soundCompFrame())
+    dfr <- soundCompFrame() %>% 
+      mutate(FrequencyRnd = exp(round(log(Frequency), 1))) %>%
+      group_by(FrequencyRnd, Desc) %>%
+      summarise(RelAmp = mean(RelAmp),
+                Frequency = mean(Frequency)) %>%
+      as.data.frame()
+    p <- plot_ly(data = dfr, x = ~Frequency, y = ~RelAmp, color = ~Desc)
+    p <- add_lines(p)
+    p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+                yaxis = list(title = 'Amplituda względna'))
+    p
+  })
+  output$pltsrc <- renderPlotly({
+    req(soundCompFrame())
+    dfr <- soundCompFrame() %>% 
+      mutate(FrequencyRnd = exp(round(log(Frequency), 1))) %>%
+      group_by(FrequencyRnd, Source) %>%
+      summarise(RelAmp = mean(RelAmp),
+                Frequency = mean(Frequency)) %>%
+      as.data.frame()
+    p <- plot_ly(data = dfr, x = ~Frequency, y = ~RelAmp, color = ~Source)
+    p <- add_lines(p)
+    p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+                yaxis = list(title = 'Amplituda względna'))
+    p
   })
   
   wav1 <- reactive(readWave(smp$path[smp$source == input$src1 & smp$snd_desc == input$dsc1 & smp$pitch == input$ptc1]))
