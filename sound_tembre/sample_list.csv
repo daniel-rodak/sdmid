@@ -1,0 +1,25 @@
+source,pitch,snd_desc,path
+Marzena,C4,gloska A,sound/M_A_C4.wav
+Marzena,C4,gloska E,sound/M_E_C4.wav
+Marzena,C4,gloska I,sound/M_I_C4.wav
+Marzena,C4,gloska O,sound/M_O_C4.wav
+Marzena,C4,gloska Y,sound/M_Y_C4.wav
+Marzena,F4,gloska A,sound/M_A_F4.wav
+Marzena,F4,gloska E,sound/M_E_F4.wav
+Marzena,F4,gloska I,sound/M_I_F4.wav
+Marzena,F4,gloska O,sound/M_O_F4.wav
+Marzena,F4,gloska Y,sound/M_Y_F4.wav
+Daniel,F4,gloska A,sound/D_A_F4.wav
+Daniel,F4,gloska E,sound/D_E_F4.wav
+Daniel,F4,gloska I,sound/D_I_F4.wav
+Daniel,F4,gloska O,sound/D_O_F4.wav
+Daniel,F4,gloska Y,sound/D_Y_F4.wav
+Daniel,C4,gloska A,sound/D_A_C4.wav
+Daniel,C4,gloska E,sound/D_E_C4.wav
+Daniel,C4,gloska I,sound/D_I_C4.wav
+Daniel,C4,gloska O,sound/D_O_C4.wav
+Daniel,C4,gloska Y,sound/D_Y_C4.wav
+Gitara klasyczna,C4,struna,sound/classic_C4.wav
+Gitara klasyczna,F4,struna,sound/classic_F4.wav
+Gitara elektryczna,C4,czysty; Tone 0,sound/electric_set1_C4.wav
+Gitara elektryczna,F4,czysty; Tone 0,sound/electric_set1_F4.wav
