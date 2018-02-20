@@ -31,6 +31,25 @@ getNote <- function(frq, snd) {
   return(snd[closest.freq, "Note"])
 }
 
+getMultiples <- function(wav.path, f, bck = "sound/bck_voice.wav") {
+  wav <- readWave(wav.path)
+  wv <- wav@left[1:132000]
+  bckSnd <- readWave(bck)@left[1:132000]
+  N <- length(wv)
+  fft_wav <- fft((wv-bckSnd) * hamming(N))
+  dF <- wav@samp.rate/N
+  dfr <- data.frame(Frequency = dF*1:round(N/2),
+                    Amplitude = abs((fft_wav[1:round(N/2)])^2))
+  fMult <- f
+  ret <- data.frame(Frequency = numeric(), Amplitude = numeric())
+  while(fMult < 8000) {
+    amps <- dfr[abs(dfr$Frequency - fMult) < 0.025 * fMult, 'Amplitude']
+    ret <- rbind(ret, data.frame(Frequency = fMult, Amplitude = max(amps)))
+    fMult <- fMult + f
+  }
+  ret
+}
+
 minMaxNormalize <- function(x) {
   mx <- max(x)
   mn <- min(x)
@@ -87,7 +106,7 @@ makeCompPlot <- function(wav1, wav2, snd, tit = "Widmo", bck = "sound/bck_voice.
   p
 }
 
-snd <- read.csv("sound_list.csv", stringsAsFactors = FALSE)
+snd <- read.csv("note_list.csv", stringsAsFactors = FALSE)
 smp <- read.csv("sample_list.csv", stringsAsFactors = FALSE)
 selPntTemplate <- data.frame(Note = character(0), Frequency = numeric(0), Smoothed = numeric(0))
 selectedDfTemplate <- function() {
@@ -112,7 +131,8 @@ ui <- dashboardPage(
     sidebarMenu(id = 'menu1',
       menuItem("Widmo", tabName = "spec", icon = icon("signal")),
       menuItem("Porównaj", tabName = "comp", icon = icon("object-group")),
-      menuItem("Charakterystyka", tabName = "char", icon = icon("braille"))
+      menuItem("Charakterystyka", tabName = "char", icon = icon("braille")),
+      menuItem("Automatyczna analiza", tabName = 'auto', icon = icon('magic'))
     ),
     conditionalPanel(
       condition = "input.menu1 == 'spec'",
@@ -134,6 +154,10 @@ ui <- dashboardPage(
         selectInput('ptc2', 'Wysokość dźwięku', choices = unique(smp$pitch))
       ),
       actionButton('btn2', 'Narysuj wykres')
+    ),
+    conditionalPanel(
+      condition = "input.menu1 == 'auto'",
+      selectInput('ptcAuto', 'Wysokość dźwięku', choices = unique(smp$pitch))
     ),
     tags$div(id = 'spinnerAttr',
              style = 'position: fixed; bottom: 0px; margin: 1%;',
@@ -182,6 +206,28 @@ ui <- dashboardPage(
           box(width = 12, title = "Tabela z danymi:",
             DT::dataTableOutput('tbl2'),
             actionButton('rst2', 'Resetuj tabelkę')
+          )
+        )
+      ),
+      
+      tabItem(tabName = 'auto',
+        spinner('Ellipsis.svg'),
+        fluidRow(
+          box(width = 12, title = 'Charakterystyka wszystkich dźwięków',
+              plotlyOutput('plt3Auto')
+          )
+        ),
+        fluidRow(
+          box(width = 6, title = 'Charakterystka rodzajów dźwięków',
+              plotlyOutput('pltdscAuto')    
+          ),
+          box(width = 6, title = 'Charakterystka źródeł dźwięków',
+              plotlyOutput('pltsrcAuto')    
+          )
+        ),
+        fluidRow(
+          box(width = 12, title = "Tabela z danymi:",
+              DT::dataTableOutput('tbl2Auto')
           )
         )
       )
@@ -323,6 +369,67 @@ server <- function(input, output, session) {
   output$pltsrc <- renderPlotly({
     req(soundCompFrame())
     dfr <- soundCompFrame() %>% 
+      mutate(FrequencyRnd = exp(round(log(Frequency), 1))) %>%
+      group_by(FrequencyRnd, Source) %>%
+      summarise(RelAmp = mean(RelAmp),
+                Frequency = mean(Frequency)) %>%
+      as.data.frame()
+    p <- plot_ly(data = dfr, x = ~Frequency, y = ~RelAmp, color = ~Source)
+    p <- add_lines(p)
+    p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+                yaxis = list(title = 'Amplituda względna [dB]'))
+    p
+  })
+
+# auto tab ----------------------------------------------------------------
+
+  autoCompFrame <- reactive({
+    srcs <- smp[grepl("Damski|Meski", smp$source) & smp$pitch == input$ptcAuto, ]
+    pitch <- ifelse(input$ptcAuto == 'C4', 261.63, 349.23)
+    ret <- soundCompFrameTemplate
+    for(i in 1:nrow(srcs)) {
+      currDf <- getMultiples(srcs$path[i], pitch)
+      currDf$SoundID <- sprintf('%s_%s_%s', srcs$source[i], srcs$snd_desc[i], srcs$pitch[i])
+      currDf$Source <- srcs$source[i]
+      currDf$Desc <- srcs$snd_desc[i]
+      currDf$RelAmp <- 10*log10(currDf$Amplitude / currDf$Amplitude[1])
+      ret <- rbind(ret, currDf[, c('SoundID', 'Source', 'Desc', 'Frequency', 'RelAmp')])
+    }
+    ret
+  })
+  output$tbl2Auto <- DT::renderDataTable({
+    req(autoCompFrame())
+    ret <- autoCompFrame()
+    ret$Frequency <- round(ret$Frequency)
+    ret$RelAmp <- round(ret$RelAmp, 3)
+    colnames(ret) <- c('ID dźwięku', 'Źródło', 'Rodzaj', 'Częstotliwość', 'Amplituda względna [dB]')
+    ret
+  })
+  output$plt3Auto <- renderPlotly({
+    req(autoCompFrame())
+    p <- plot_ly(data = autoCompFrame(), x = ~Frequency, y = ~RelAmp, color = ~SoundID)
+    p <- add_lines(p)
+    p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+                yaxis = list(title = 'Amplituda względna [dB]'))
+    p
+  })
+  output$pltdscAuto <- renderPlotly({
+    req(autoCompFrame())
+    dfr <- autoCompFrame() %>% 
+      mutate(FrequencyRnd = exp(round(log(Frequency), 1))) %>%
+      group_by(FrequencyRnd, Desc) %>%
+      summarise(RelAmp = mean(RelAmp),
+                Frequency = mean(Frequency)) %>%
+      as.data.frame()
+    p <- plot_ly(data = dfr, x = ~Frequency, y = ~RelAmp, color = ~Desc)
+    p <- add_lines(p)
+    p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+                yaxis = list(title = 'Amplituda względna [dB]'))
+    p
+  })
+  output$pltsrcAuto <- renderPlotly({
+    req(autoCompFrame())
+    dfr <- autoCompFrame() %>% 
       mutate(FrequencyRnd = exp(round(log(Frequency), 1))) %>%
       group_by(FrequencyRnd, Source) %>%
       summarise(RelAmp = mean(RelAmp),
