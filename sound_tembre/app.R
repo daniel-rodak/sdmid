@@ -59,12 +59,13 @@ makeDfPlot <- function(wav, snd, bck = "sound/bck_voice.wav") {
   bckSnd <- readWave(bck)@left[1:132000]
   wv <- wav@left[1:132000]
   N <- length(wv)
-  fft_wav <- fft((wv-bckSnd) * hamming(N))
+  fft_wav <- fft(minMaxNormalize(wv) * hamming(N)) - fft(minMaxNormalize(bckSnd) * hamming(N))
   dF <- wav@samp.rate/N
   
   df.plot <- data.frame(Frequency = dF*1:round(N/2),
                         Amplitude = abs((fft_wav[1:round(N/2)])^2))
   df.plot$Smoothed <- minMaxNormalize(as.numeric(smooth::sma(df.plot$Amplitude, order = 8)$fitted))
+  # df.plot$Smoothed <- minMaxNormalize(df.plot$Amplitude)
   df.plot$Note <- sapply(df.plot$Frequency, getNote, snd)
   return(df.plot)
 }
@@ -86,14 +87,18 @@ makeCompPlot <- function(wav1, wav2, snd, tit = "Widmo", bck = "sound/bck_voice.
   N <- length(wv1)
   dF <- wav1@samp.rate/N
   stopifnot(N == length(wv2))
-  fft_wav1 <- fft((wv1 - bckSnd) * hamming(N))
-  fft_wav2 <- fft((wv2 - bckSnd) * hamming(N))
+  # fft_wav1 <- fft((wv1 - bckSnd) * hamming(N))
+  # fft_wav2 <- fft((wv2 - bckSnd) * hamming(N))
+  fft_wav1 <- fft(minMaxNormalize(wv1) * hamming(N)) - fft(minMaxNormalize(bckSnd) * hamming(N))
+  fft_wav2 <- fft(minMaxNormalize(wv2) * hamming(N)) - fft(minMaxNormalize(bckSnd) * hamming(N))
   
   df.plot <- data.frame(Frequency = dF*1:round(N/2),
                         Amplitude1 = abs((fft_wav1[1:round(N/2)])^2),
                         Amplitude2 = abs((fft_wav2[1:round(N/2)])^2))
-  df.plot$Smoothed1 <- minMaxNormalize(as.numeric(smooth::sma(df.plot$Amplitude1, order = 8)$fitted))
-  df.plot$Smoothed2 <- minMaxNormalize(as.numeric(smooth::sma(df.plot$Amplitude2, order = 8)$fitted))
+  df.plot$Smoothed1 <- (as.numeric(smooth::sma(df.plot$Amplitude1, order = 8)$fitted))
+  df.plot$Smoothed2 <- (as.numeric(smooth::sma(df.plot$Amplitude2, order = 8)$fitted))
+  # df.plot$Smoothed1 <- minMaxNormalize(df.plot$Amplitude1)
+  # df.plot$Smoothed2 <- minMaxNormalize(df.plot$Amplitude2)
   df.plot$Note <- sapply(df.plot$Frequency, getNote, snd)
   
   p <- plot_ly(data = df.plot, x = ~Frequency, y = ~Smoothed1, name = "Pierwszy dźwięk",
@@ -384,6 +389,7 @@ server <- function(input, output, session) {
 # auto tab ----------------------------------------------------------------
 
   autoCompFrame <- reactive({
+    # srcs <- smp[smp$pitch == input$ptcAuto, ]
     srcs <- smp[grepl("Damski|Meski", smp$source) & smp$pitch == input$ptcAuto, ]
     pitch <- ifelse(input$ptcAuto == 'C4', 261.63, 349.23)
     ret <- soundCompFrameTemplate
