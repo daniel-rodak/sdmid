@@ -59,13 +59,13 @@ makeDfPlot <- function(wav, snd, bck = "sound/bck_voice.wav") {
   bckSnd <- readWave(bck)@left[1:132000]
   wv <- wav@left[1:132000]
   N <- length(wv)
-  fft_wav <- fft(minMaxNormalize(wv) * hamming(N)) - fft(minMaxNormalize(bckSnd) * hamming(N))
+  fft_wav <- fft(minMaxNormalize(wv) * hamming(N))
   dF <- wav@samp.rate/N
   
   df.plot <- data.frame(Frequency = dF*1:round(N/2),
                         Amplitude = abs((fft_wav[1:round(N/2)])^2))
-  df.plot$Smoothed <- minMaxNormalize(as.numeric(smooth::sma(df.plot$Amplitude, order = 8)$fitted))
-  # df.plot$Smoothed <- minMaxNormalize(df.plot$Amplitude)
+  df.plot <- df.plot[df.plot$Frequency > 20 & df.plot$Frequency < 10500, ]
+  df.plot$Smoothed <- as.numeric(smooth::sma(df.plot$Amplitude, order = 8)$fitted)
   df.plot$Note <- sapply(df.plot$Frequency, getNote, snd)
   return(df.plot)
 }
@@ -74,7 +74,7 @@ makePlot <- function(df.plot, tit = "Widmo") {
   p <- plot_ly(data = df.plot, x = ~Frequency, y = ~Smoothed,
                type = 'scatter', mode = 'lines',
                text = ~paste("Freq:", round(Frequency), "Hz<br>Note:", Note))
-  p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+  p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10500)), title = "Częstotliwość [Hz]"),
               yaxis = list(type = 'log', title = 'Amplituda [j.u.]'),
               title = tit)
   return(p)
@@ -87,24 +87,21 @@ makeCompPlot <- function(wav1, wav2, snd, tit = "Widmo", bck = "sound/bck_voice.
   N <- length(wv1)
   dF <- wav1@samp.rate/N
   stopifnot(N == length(wv2))
-  # fft_wav1 <- fft((wv1 - bckSnd) * hamming(N))
-  # fft_wav2 <- fft((wv2 - bckSnd) * hamming(N))
-  fft_wav1 <- fft(minMaxNormalize(wv1) * hamming(N)) - fft(minMaxNormalize(bckSnd) * hamming(N))
-  fft_wav2 <- fft(minMaxNormalize(wv2) * hamming(N)) - fft(minMaxNormalize(bckSnd) * hamming(N))
+  fft_wav1 <- fft(minMaxNormalize(wv1) * hamming(N))
+  fft_wav2 <- fft(minMaxNormalize(wv2) * hamming(N))
   
   df.plot <- data.frame(Frequency = dF*1:round(N/2),
                         Amplitude1 = abs((fft_wav1[1:round(N/2)])^2),
                         Amplitude2 = abs((fft_wav2[1:round(N/2)])^2))
+  df.plot <- df.plot[df.plot$Frequency > 20 & df.plot$Frequency < 10500, ]
   df.plot$Smoothed1 <- (as.numeric(smooth::sma(df.plot$Amplitude1, order = 8)$fitted))
   df.plot$Smoothed2 <- (as.numeric(smooth::sma(df.plot$Amplitude2, order = 8)$fitted))
-  # df.plot$Smoothed1 <- minMaxNormalize(df.plot$Amplitude1)
-  # df.plot$Smoothed2 <- minMaxNormalize(df.plot$Amplitude2)
   df.plot$Note <- sapply(df.plot$Frequency, getNote, snd)
   
   p <- plot_ly(data = df.plot, x = ~Frequency, y = ~Smoothed1, name = "Pierwszy dźwięk",
                type = 'scatter', mode = 'lines', source = "B",
                text = ~paste("Freq:", round(Frequency), "Hz<br>Note:", Note))
-  p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10000)), title = "Częstotliwość [Hz]"),
+  p <- layout(p, xaxis = list(type = 'log', range = c(log10(200), log10(10500)), title = "Częstotliwość [Hz]"),
               yaxis = list(type = 'log', title = 'Amplituda [j.u.]'),
               title = tit)
   p <- add_trace(p, y = ~Smoothed2, name = 'Drugi dźwięk', mode = 'lines')
@@ -311,28 +308,29 @@ server <- function(input, output, session) {
 
   observeEvent(input$src1, {
     dscCache <- input$dsc1
-    chcs <- smp[smp$source == input$src1, 'snd_desc']
+    chcs <- unique(smp[smp$source == input$src1, 'snd_desc'])
     if (!(dscCache %in% chcs)) {
       dscCache <- chcs[1]
     }
     updateSelectInput(session, 'dsc1',
-                      choices = smp[smp$source == input$src, 'snd_desc'],
+                      choices = chcs,
                       selected = dscCache)
   })
   observeEvent(input$src2, {
     dscCache <- input$dsc2
-    chcs <- smp[smp$source == input$src2, 'snd_desc']
+    chcs <- unique(smp[smp$source == input$src2, 'snd_desc'])
     if (!(dscCache %in% chcs)) {
       dscCache <- chcs[1]
     }
     updateSelectInput(session, 'dsc2',
-                      choices = smp[smp$source == input$src2, 'snd_desc'],
+                      choices = chcs,
                       selected = dscCache)
   })
   observeEvent(input$btn2, {
     wav1 <- readWave(smp$path[smp$source == input$src1 & smp$snd_desc == input$dsc1 & smp$pitch == input$ptc1])
     wav2 <- readWave(smp$path[smp$source == input$src2 & smp$snd_desc == input$dsc2 & smp$pitch == input$ptc2])
-    tit2 <- "Porównanie widm dźwięków"
+    tit2 <- sprintf("Porównanie widm dźwięków: %s - %s oraz %s - %s",
+                    input$src1, input$dsc1, input$src2, input$dsc2)
     output$plt2 <- renderPlotly(makeCompPlot(wav1, wav2, snd, tit2))
   })
 
